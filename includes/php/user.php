@@ -8,13 +8,27 @@ class user
     private string $icon;
     private string $chats;
 
+    public function get_icon() : string
+    {
+        return $this->icon;
+    }
+    public function get_username() : string
+    {
+        return $this->username;
+    }
+    public function get_created_at() : string
+    {
+        return $this->created_at;
+    }
 
 
     public function __construct(string $fingerprint)
     {
+        require_once "security_functions.php";
+        $fingerprint = _cleaninjections($fingerprint);
         $this->fingerprint = $fingerprint;
     }
-    function login_fingerprint($token) : bool
+    function login_fingerprint($token, $auto_set_to_session = true): bool
     {
         require_once "conn.php";
         require_once "security_functions.php";
@@ -23,23 +37,20 @@ class user
             echo "Invalid token";
             exit();
         }
-        $sql = "SELECT * FROM user WHERE fingerprint=?;";
+        $sql = "SELECT * FROM users WHERE fingerprint=?;";
 
-        if ($stmt = $conn->prepare($sql))
-        {
-            
-            $sql_fingerprint= $this->fingerprint;
+        if ($stmt = $conn->prepare($sql)) {
+
+            $sql_fingerprint = $this->fingerprint;
 
             mysqli_stmt_bind_param($stmt, "s", $sql_fingerprint);
             // Attempt to execute the prepared statement
-            if ($stmt->execute())
-            {
-            
+            if ($stmt->execute()) {
+
                 // Store result
                 $result = $stmt->get_result();
                 // Check if we get any rows returned
-                if ($result->num_rows == 1)
-                {
+                if ($result->num_rows == 1) {
                     // Update the user's data
                     if ($row = mysqli_fetch_assoc($result)) {
                         $this->username = $row["username"];
@@ -47,86 +58,88 @@ class user
                         $this->created_at = $row["created_at"];
                         $this->icon = $row["icon"];
                         $this->chats = $row["chats"];
+                        if($auto_set_to_session){
+                            $_SESSION['user'] = $this;
+                        }
                         return true;
-                    }else
-                    {
-                        echo "mysql Error of ". mysqli_error($conn);
+                    } else {
+                        echo "mysql Error of " . mysqli_error($conn);
                     }
-                    
                 }
-            }else
-            {
-                echo "mysql Error of ". mysqli_error($conn);
+            } else {
+                echo "mysql Error of " . mysqli_error($conn);
             }
-        }else
-        {
-            echo "mysql Error of ". mysqli_error($conn);
+        } else {
+            echo "mysql Error of " . mysqli_error($conn);
         }
-        
+
         return false;
     }
-    function login($username, $password, $token) : bool
+    function login($username, $password, $token, $auto_set_to_session = true): bool
     {
-        require_once "conn.php";
+        require "conn.php";
         require_once "security_functions.php";
 
         if (!verify_csrf_token($token)) {
             echo "Invalid token";
             exit();
         }
-        
-        $sql = "SELECT * FROM user WHERE username=?;";
+
+        $sql = "SELECT * FROM users WHERE username=?;";
 
         $stmt = mysqli_stmt_init($conn);
 
-            if (!mysqli_stmt_prepare($stmt, $sql)) {
-                echo "sql error: " + mysqli_errno($conn);
-                exit();
-            } else {
+        if (!mysqli_stmt_prepare($stmt, $sql)) {
+            echo "sql error: " . mysqli_errno($conn);
+            exit();
+        } else {
 
-                mysqli_stmt_bind_param($stmt, "s", $username);
-                mysqli_stmt_execute($stmt);
+            mysqli_stmt_bind_param($stmt, "s", $username);
+            mysqli_stmt_execute($stmt);
 
-                $result = mysqli_stmt_get_result($stmt);
+            $result = mysqli_stmt_get_result($stmt);
 
-                if ($row = mysqli_fetch_assoc($result)) {
-                    // Found a user entry
+            if ($row = mysqli_fetch_assoc($result)) {
+                // Found a user entry
 
-                    /*
+                /*
                     * -------------------------------------------------------------------------------
                     *   Check passwords
                     * -------------------------------------------------------------------------------
                     */
-                    $pwdCheck = password_verify($password, $row['password']);
+                $pwdCheck = password_verify($password, $row['password']);
 
 
-                    if ($pwdCheck == false) {
-                        echo "wrong password";
-                        exit();
-                    } else if ($pwdCheck == true) {
-                        /*
+                if ($pwdCheck == true) {
+                    /*
                         * -------------------------------------------------------------------------------
                         *   Setup Values
                         * -------------------------------------------------------------------------------
                         */
-                        $this->username = $row['username'];
-                        $this->password = $row['password'];
-                        $this->icon = $row['icon'];
-                        $this->chats = $row['chats'];
-                        $this->created_at = $row['created_at'];
-
-                        
+                    $this->username = $row['username'];
+                    $this->password = $row['password'];
+                    $this->icon = $row['icon'];
+                    $this->chats = $row['chats'];
+                    $this->created_at = $row['created_at'];
+                    if($auto_set_to_session){
+                        $_SESSION['user'] = $this;
                     }
-                } else {
-                    echo "username doesn't exsist";
+                    return true;
+                }else{
+                    echo "wrong password";
                     exit();
                 }
+            } else {
+                echo "username doesn't exsist";
+                echo mysqli_error($conn);
+                exit();
             }
+        }
 
 
         return false;
     }
-    function register($username, $password, $icon, $chats, $token) : bool
+    function register($username, $password, $passwordRepeat, $icon, $chats, $token): bool
     {
 
         require_once "conn.php";
@@ -139,11 +152,10 @@ class user
         $username = _cleaninjections($username);
         $password = _cleaninjections($password);
         $icon = _cleaninjections($icon);
-        $fingerprint = _cleaninjections($fingerprint);
-        $chats = implode(_cleaninjections($chats));
+
+        $chats = _cleaninjections($chats);
         $token = _cleaninjections($token);
 
-        
         /*
         * -------------------------------------------------------------------------------
         *   Verifying CSRF token
@@ -152,24 +164,27 @@ class user
 
         if (!verify_csrf_token($token)) {
             echo "Invalid token";
+            return false;
             exit();
-        }
-        if (empty($username) || empty($password) || empty($passwordRepeat)) {
+        } else if (empty($username) || empty($password) || empty($passwordRepeat)) {
             echo "details not set";
+            return false;
             exit();
         } else if (!preg_match("/^[a-zA-Z0-9]*$/", $username)) {
             echo "no special characters in username";
+            return false;
             exit();
-        }  else if ($password !== $passwordRepeat) {
-    
-            
+        } else if ($password !== $passwordRepeat) {
+
+
             echo "passwords dont match";
+            return false;
             exit();
-        } else {
-            if (!availableUsername($conn, $username)){
-                echo "username not unique";
-                exit();
-            }
+        } else if (!availableUsername($conn, $username)) {
+
+            echo "<p>username not unique</p>";
+            return false;
+            exit();
         }
         /*
         * -------------------------------------------------------------------------------
@@ -177,32 +192,40 @@ class user
         * -------------------------------------------------------------------------------
         */
 
-        $sql = "insert into user(username, password, icon, fingerprint, chats) 
+        $sql = "insert into users(username, password, icon, fingerprint, chats) 
                 values (?,?,?,?,?)";
         $stmt = mysqli_stmt_init($conn);
         if (!mysqli_stmt_prepare($stmt, $sql)) {
 
-           
+
             echo "sql error of " + mysqli_errno($conn);
+            return false;
             exit();
-        } 
-        else {
+        } else {
 
             $hashedPwd = password_hash($password, PASSWORD_DEFAULT);
+            $fingerprint = $this->fingerprint;
 
             mysqli_stmt_bind_param($stmt, "sssss", $username, $hashedPwd, $icon, $fingerprint, $chats);
-            if(mysqli_stmt_execute($stmt))
-            {
+            if (mysqli_stmt_execute($stmt)) {
+                mysqli_stmt_close($stmt);
+                mysqli_close($conn);
                 return $this->login($username, $password, $token);
+            } else {
+                echo "sql error of " . mysqli_errno($conn);
+                return false;
+                exit();
             }
-            
-
-           
-            
         }
+        echo "Something went wrong";
+        return false;
     }
-    
-
+    function logout()
+    {
+        session_destroy();
+        header("location: html/login_page.php");
+        exit();
+    }
 }
 
 class user_settings

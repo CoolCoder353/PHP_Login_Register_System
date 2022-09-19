@@ -10,8 +10,8 @@ define("DB_NAME", "underground");
 /*
 * User Settings
 */
-define("ALLOW_FINGERPRINT_LOGIN", true);
-define("PFP_SAVE_LOCATION", dirname("user_icons"));
+define("ALLOW_FINGERPRINT_LOGIN", false);
+define("PFP_SAVE_LOCATION","user-pfp/");
 
 define("PFP_WIDTH", 150);
 define("PFP_HEIGHT", 150);

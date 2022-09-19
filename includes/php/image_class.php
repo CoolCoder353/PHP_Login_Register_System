@@ -26,7 +26,7 @@ class Image {
    var $image_type;
 
    function load($file) {
-    $filename = $file["name"];
+    $filename = $file["tmp_name"];
       $image_info = getimagesize($filename);
       $this->image_type = $image_info[2];
       if( $this->image_type == IMAGETYPE_JPEG ) {

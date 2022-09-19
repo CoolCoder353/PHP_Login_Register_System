@@ -63,11 +63,12 @@ function verify_csrf_token($token) {
 
 function availableUsername($conn, $username){
 
-    $sql = "select id from users where username=?;";
+    $sql = "SELECT * from users where username=?;";
     $stmt = mysqli_stmt_init($conn);
     if (!mysqli_stmt_prepare($stmt, $sql)) {
 
-        return $_SESSION['ERRORS']['scripterror'] = 'SQL error';
+        echo "sql error of " . mysqli_errno($conn);
+        return false;
     } 
     else {
 
@@ -84,10 +85,4 @@ function availableUsername($conn, $username){
             return true;
         }
     }
-}
-
-
-function format_icon($icon)
-{
-
 }

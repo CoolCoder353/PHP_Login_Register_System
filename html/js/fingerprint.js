@@ -6,6 +6,7 @@ function updateFingerprint(fingerprint)
   }
   part = document.getElementById("fingerprint");
   part.value = fingerprint;
+  document.getElementById("submitButton").disabled = false;
 }
 
 fingerpinrt = null;
