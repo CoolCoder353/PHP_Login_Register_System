@@ -7,18 +7,29 @@ class user
     private string $created_at;
     private string $icon;
     private string $chats;
+    private string $email;
+    private bool $email_verified;
 
-    public function get_icon() : string
+    public function get_icon(): string
     {
         return $this->icon;
     }
-    public function get_username() : string
+    public function get_username(): string
     {
         return $this->username;
     }
-    public function get_created_at() : string
+    public function get_created_at(): string
     {
         return $this->created_at;
+    }
+
+    public function get_email(): string
+    {
+        return $this->email;
+    }
+    public function get_email_verified(): bool
+    {
+        return $this->email_verified;
     }
 
 
@@ -32,6 +43,7 @@ class user
     {
         require_once "conn.php";
         require_once "security_functions.php";
+        require_once "settings.php";
 
         if (!verify_csrf_token($token)) {
             echo "Invalid token";
@@ -58,7 +70,12 @@ class user
                         $this->created_at = $row["created_at"];
                         $this->icon = $row["icon"];
                         $this->chats = $row["chats"];
-                        if($auto_set_to_session){
+                        $this->email = $row['email'];
+                        $this->email_verified = $row['email_verified'];
+                        if (FORCE_EMAIL_VERIFICATION == true && $email_verified == false) {
+                            return false;
+                        }
+                        if ($auto_set_to_session) {
                             $_SESSION['user'] = $this;
                         }
                         return true;
@@ -121,11 +138,17 @@ class user
                     $this->icon = $row['icon'];
                     $this->chats = $row['chats'];
                     $this->created_at = $row['created_at'];
-                    if($auto_set_to_session){
+                    $this->email = $row['email'];
+                    $this->email_verified = $row['email_verified'];
+                    if ($auto_set_to_session) {
                         $_SESSION['user'] = $this;
                     }
+                    if (FORCE_EMAIL_VERIFICATION == true && $email_verified == false) {
+                        return false;
+                    }
+
                     return true;
-                }else{
+                } else {
                     echo "wrong password";
                     exit();
                 }
@@ -139,7 +162,7 @@ class user
 
         return false;
     }
-    function register($username, $password, $passwordRepeat, $icon, $chats, $token): bool
+    function register($username, $password, $passwordRepeat, $icon, $chats, $email, $token): bool
     {
 
         require_once "conn.php";
@@ -152,7 +175,7 @@ class user
         $username = _cleaninjections($username);
         $password = _cleaninjections($password);
         $icon = _cleaninjections($icon);
-
+        $email = _cleaninjections($email);
         $chats = _cleaninjections($chats);
         $token = _cleaninjections($token);
 
@@ -166,7 +189,7 @@ class user
             echo "Invalid token";
             return false;
             exit();
-        } else if (empty($username) || empty($password) || empty($passwordRepeat)) {
+        } else if (empty($username) || empty($password) || empty($passwordRepeat) || empty($icon) || empty($email)) {
             echo "details not set";
             return false;
             exit();
@@ -192,8 +215,8 @@ class user
         * -------------------------------------------------------------------------------
         */
 
-        $sql = "insert into users(username, password, icon, fingerprint, chats) 
-                values (?,?,?,?,?)";
+        $sql = "insert into users(username, password, icon, fingerprint, chats, email) 
+                values (?,?,?,?,?,?)";
         $stmt = mysqli_stmt_init($conn);
         if (!mysqli_stmt_prepare($stmt, $sql)) {
 
@@ -206,7 +229,7 @@ class user
             $hashedPwd = password_hash($password, PASSWORD_DEFAULT);
             $fingerprint = $this->fingerprint;
 
-            mysqli_stmt_bind_param($stmt, "sssss", $username, $hashedPwd, $icon, $fingerprint, $chats);
+            mysqli_stmt_bind_param($stmt, "ssssss", $username, $hashedPwd, $icon, $fingerprint, $chats, $email);
             if (mysqli_stmt_execute($stmt)) {
                 mysqli_stmt_close($stmt);
                 mysqli_close($conn);
@@ -226,9 +249,4 @@ class user
         header("location: html/login_page.php");
         exit();
     }
-}
-
-class user_settings
-{
-    public string $test;
 }

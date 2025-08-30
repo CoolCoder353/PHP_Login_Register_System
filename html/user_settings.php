@@ -13,6 +13,7 @@ if (isset($_SESSION['user'])) {
    
 }else
 {
+   
     header("location: login_page.php");
 }
 

@@ -17,12 +17,20 @@ if(isset($_POST))
         var_dump($_POST);
         if($user->login($username, $password, $_POST['token']) == true)
         {
-           
-            header("Location: html/user_settings.php");
+           echo "success";
+            #header("Location: html/user_settings.php");
         }
         else
         {
-            header("Location: html/login_page.php");
+            if($user->get_email_verified() == false)
+            {
+                header("Location: verify_email.php");
+            }
+            else
+            {
+                header("Location: html/login_page.php");
+            }
+        
         }
     }
 }

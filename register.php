@@ -18,13 +18,12 @@ if (isset($_POST) && file_exists($_FILES['img']['tmp_name']) && is_uploaded_file
 
 
     $user = new User($_POST['fingerprint']);
-    $result = $user->register($username, $_POST["password"], $_POST['confirm_password'], $username . "_pfp.png", "", $_POST["token"]);
+    $result = $user->register($username, $_POST["password"], $_POST['confirm_password'], $username . "_pfp.png", "",$_POST['email']);
     if($result == true){
         echo "success";
-        header("Location: html/user_settings.php");
     }else{
         echo "failed";
     }
 } else {
-    header("Location: index.php");
+    echo "Invalid input";
 }

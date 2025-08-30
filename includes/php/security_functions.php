@@ -86,3 +86,22 @@ function availableUsername($conn, $username){
         }
     }
 }
+
+function generate_email_token($conn,$username) : string 
+{
+    $token = bin2hex(random_bytes(32));
+    $sql = "INSERT (username, token) INTO email_tokens VALUES (?,?);";
+    $stmt = mysqli_stmt_init($conn);
+    if (!mysqli_stmt_prepare($stmt, $sql)) {
+
+        echo "sql error of " . mysqli_errno($conn);
+        return false;
+    } 
+    else {
+
+        mysqli_stmt_bind_param($stmt, "ss", $username, $token);
+        mysqli_stmt_execute($stmt);
+        return $token;
+    }
+    return false;
+}
